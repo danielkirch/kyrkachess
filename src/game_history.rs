@@ -25,6 +25,10 @@ impl GameHistory {
         }
     }
 
+    pub fn current_state(&self) -> GameState {
+        self.list[self.length - 1]
+    }
+
     pub fn record_move(&mut self, mv: u16, captured_piece: Piece) -> Option<GameState> {
         if self.length < MAX_GAME_HISTORY_LENGTH {
             let prev_state = self.list[self.length - 1];

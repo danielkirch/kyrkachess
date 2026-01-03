@@ -43,7 +43,7 @@ impl Zobrist {
             hash ^= self.piece_table[piece][square];
         }
         // get latest game state
-        let state = game.history.list[game.history.length - 1];
+        let state = game.history.current_state();
         // Castling rights
         for i in 0..4 {
             if (state.castling_rights & (1 << i)) != 0 {

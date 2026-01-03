@@ -33,6 +33,52 @@ impl Game {
                 .undo_move(state.current_move.unwrap(), state.captured_piece);
         }
     }
+
+    pub fn generate_legal_moves(&self) -> Vec<u16> {
+        let white_to_move = self.history.current_state().white_to_move;
+        let moves = self.board.generate_legal_moves(white_to_move);
+        let mut legal_moves: Vec<u16> = Vec::new();
+
+        // filter out castling and en passant that are not legal due to game state
+        let state = self.history.current_state();
+        for mv in moves.into_iter() {
+            if mv & 0xF000 == 0x5000 {
+                let to = ((mv >> 6) & 0x3F) as u8;
+                // en passant
+                if state.en_passant_square != Some(to) {
+                    continue;
+                }
+            } else if mv & 0xE000 == 0x2000 {
+                // castling
+                if mv & 0xF000 == 0x2000 {
+                    // kingside
+                    if state.white_to_move {
+                        if state.castling_rights & 0x01 == 0 {
+                            continue;
+                        }
+                    } else {
+                        if state.castling_rights & 0x04 == 0 {
+                            continue;
+                        }
+                    }
+                } else if mv & 0xF000 == 0x3000 {
+                    // queenside
+                    if state.white_to_move {
+                        if state.castling_rights & 0x02 == 0 {
+                            continue;
+                        }
+                    } else {
+                        if state.castling_rights & 0x08 == 0 {
+                            continue;
+                        }
+                    }
+                }
+            }
+            legal_moves.push(mv);
+        }
+
+        legal_moves
+    }
 }
 
 #[cfg(test)]

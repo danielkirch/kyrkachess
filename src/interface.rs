@@ -1,6 +1,7 @@
 use crate::constants::Piece;
 use crate::game::Game;
 use crate::zobrist::Zobrist;
+use rand::seq::IndexedRandom;
 use std::io;
 
 pub struct UciInterface {
@@ -36,12 +37,11 @@ impl UciInterface {
                 }
                 pos_str if pos_str.starts_with("position") => {
                     // Handle position command
-                    println!("info position command received: {}", pos_str);
                     self.parse_position_command(pos_str);
                 }
                 go_str if go_str.starts_with("go") => {
                     // Handle go command
-                    println!("info go command received: {}", go_str);
+                    self.make_move();
                 }
                 _ => {
                     println!("Unknown command: {}", command);
@@ -85,6 +85,12 @@ impl UciInterface {
                 }
             }
         }
+
+        println!("info position set up");
+        println!(
+            "info current board position: {:?}",
+            self.game.unwrap().board.piece_list
+        );
     }
 
     fn parse_move_string(&self, mv_str: &str) -> Option<u16> {
@@ -123,8 +129,7 @@ impl UciInterface {
         };
 
         // Check for en passant
-        let game_history = self.game.unwrap().history;
-        let game_state = game_history.list[game_history.length - 1];
+        let game_state = self.game.unwrap().history.current_state();
         let is_pawn = match board.piece_list[from] {
             Piece::WhitePawn | Piece::BlackPawn => true,
             _ => false,
@@ -169,6 +174,47 @@ impl UciInterface {
 
         Some(mv)
     }
+
+    fn make_move(&mut self) {
+        let game: Game = self.game.unwrap();
+        // For demonstration, we will make a random valid move.
+        let moves = game.generate_legal_moves();
+        match moves.choose(&mut rand::rng()) {
+            Some(mv) => println!("bestmove {}", UciInterface::move_to_string(*mv)),
+            None => println!("bestmove (none)"),
+        }
+    }
+
+    fn move_to_string(mv: u16) -> String {
+        let from = (mv & 0x3F) as u8;
+        let to = ((mv >> 6) & 0x3F) as u8;
+
+        let from_file = (from % 8) + b'a';
+        let from_rank = (from / 8) + b'1';
+        let to_file = (to % 8) + b'a';
+        let to_rank = (to / 8) + b'1';
+
+        let mut move_str = String::new();
+        move_str.push(from_file as char);
+        move_str.push(from_rank as char);
+        move_str.push(to_file as char);
+        move_str.push(to_rank as char);
+
+        // Check for promotion
+        let promotion = mv & 0x8000;
+        if promotion != 0 {
+            let promo_char = match promotion {
+                0x8000 => 'q',
+                0x9000 => 'r',
+                0xA000 => 'b',
+                0xB000 => 'n',
+                _ => ' ',
+            };
+            move_str.push(promo_char);
+        }
+
+        move_str
+    }
 }
 
 #[cfg(test)]
@@ -183,5 +229,19 @@ mod tests {
         let board = interface.game.unwrap().board;
         assert_eq!(board.piece_list[28], Piece::WhitePawn);
         assert_eq!(board.piece_list[36], Piece::BlackPawn);
+    }
+
+    #[test]
+    fn test_move_to_string() {
+        let mv = 0x000C | (0x001C << 6);
+        let move_str = UciInterface::move_to_string(mv);
+        assert_eq!(move_str, "e2e4");
+    }
+
+    #[test]
+    fn test_move_to_string_with_promotion() {
+        let mv = 0x0036 | (0x003E << 6) | 0x8000;
+        let move_str = UciInterface::move_to_string(mv);
+        assert_eq!(move_str, "g7g8q");
     }
 }
