@@ -28,7 +28,7 @@ impl UciInterface {
                     break;
                 }
                 "uci" => {
-                    println!("id name KyrkaChess");
+                    println!("id name rusty_chess");
                     println!("id author Daniel Kirch");
                     println!("uciok");
                 }
